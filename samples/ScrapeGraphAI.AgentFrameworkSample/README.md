@@ -1,21 +1,32 @@
 # ScrapeGraphAI Agent Framework Sample
 
-This sample shows a Microsoft Agent Framework agent using an OpenAI-compatible chat endpoint plus the ScrapeGraphAI `scrape_page` tool. By default, it points at LM Studio's local server on `http://localhost:1234/v1`. It mirrors this AI SDK shape:
+This sample shows how to expose ScrapeGraphAI as Microsoft Agent Framework tools and attach those tools to an agent using an OpenAI-compatible chat endpoint.
 
-```ts
-const { text } = await generateText({
-  model: openai("gpt-5-nano"),
-  prompt: "Scrape Hacker News and write a short, concise summary of what people are talking about today.",
-  tools: {
-    scrape: scrapeTool(),
-  },
-  stopWhen: stepCountIs(3),
-});
+By default, the sample targets LM Studio's local OpenAI-compatible server at:
+
+```text
+http://localhost:1234/v1
 ```
 
-## Run Without API Calls
+## What It Demonstrates
 
-This lists the single tool attached to the agent without calling OpenAI or ScrapeGraphAI:
+- `AddScrapeGraphAI(...)` typed client registration
+- `AddScrapeGraphAgentTools(...)` tool registration
+- Converting ScrapeGraphAI tools to `AITool` instances with `AsAITools(...)`
+- Attaching tools to an Agent Framework agent
+- Running tool calls through `FunctionInvokingChatClient`
+- Using a local OpenAI-compatible endpoint such as LM Studio
+
+## Prerequisites
+
+- .NET 10
+- A ScrapeGraphAI API key
+- LM Studio or another OpenAI-compatible chat endpoint
+- A tool-capable chat model loaded in that endpoint
+
+## List Registered Tools
+
+This command does not call OpenAI or ScrapeGraphAI. It only prints the model, endpoint, and registered tools:
 
 ```powershell
 dotnet run --project samples/ScrapeGraphAI.AgentFrameworkSample
@@ -23,38 +34,50 @@ dotnet run --project samples/ScrapeGraphAI.AgentFrameworkSample
 
 ## Run The Agent
 
-Start LM Studio's local server, load a tool-capable chat model, then run:
+Start your OpenAI-compatible endpoint, set your ScrapeGraphAI API key, then run:
 
 ```powershell
 $env:SGAI_API_KEY = "<your-scrapegraphai-api-key>"
 dotnet run --project samples/ScrapeGraphAI.AgentFrameworkSample -- --run
 ```
 
-LM Studio does not require a real OpenAI API key for local requests, so the sample uses `lm-studio` as the default placeholder key. Override it with `OPENAI_API_KEY` if your OpenAI-compatible endpoint requires one.
+LM Studio does not require a real OpenAI API key for local requests, so the sample uses `lm-studio` as the default placeholder key. If your endpoint requires an API key, set:
 
-The default endpoint is `http://localhost:1234/v1`. Override it with `LMSTUDIO_BASE_URL`, `OPENAI_BASE_URL`, or `--endpoint`:
+```powershell
+$env:OPENAI_API_KEY = "<your-openai-compatible-api-key>"
+```
+
+## Configure Endpoint, Model, And Prompt
+
+Override the endpoint:
 
 ```powershell
 dotnet run --project samples/ScrapeGraphAI.AgentFrameworkSample -- --run --endpoint http://localhost:1234/v1
 ```
 
-The default model is `google/gemma-4-12b-qat`. Override it with `LMSTUDIO_MODEL`, `OPENAI_MODEL`, or `--model`:
+Override the model:
 
 ```powershell
 $env:LMSTUDIO_MODEL = "your-loaded-model-id"
 dotnet run --project samples/ScrapeGraphAI.AgentFrameworkSample -- --run --model your-loaded-model-id
 ```
 
-Override the prompt with `--prompt`:
+Override the prompt:
 
 ```powershell
 dotnet run --project samples/ScrapeGraphAI.AgentFrameworkSample -- --run --prompt "Scrape https://news.ycombinator.com and summarize the top discussions."
 ```
 
+Configuration precedence:
+
+- Endpoint: `--endpoint`, `LMSTUDIO_BASE_URL`, `OPENAI_BASE_URL`, then `http://localhost:1234/v1`
+- Model: `--model`, `LMSTUDIO_MODEL`, `OPENAI_MODEL`, then `google/gemma-4-e4b`
+- Prompt: `--prompt`, then the sample's default Hacker News prompt
+
 ## Key Code
 
 ```csharp
-var tools = scrapeGraphTools
+var aiTools = scrapeGraphTools
     .AsAITools(ScrapeGraphAgentToolNames.ScrapePage)
     .ToArray();
 
@@ -63,23 +86,22 @@ var chatClient = new ChatClient(
     new ApiKeyCredential(openAiApiKey),
     new OpenAIClientOptions
     {
-        Endpoint = new Uri("http://localhost:1234/v1")
+        Endpoint = endpointUri
     });
+
 var agent = chatClient.AsAIAgent(
     name: "ScrapeGraphResearcher",
     instructions: "Use scrape_page when you need current page content.",
-    tools: tools,
+    tools: aiTools,
     clientFactory: innerClient => new FunctionInvokingChatClient(innerClient, loggerFactory, provider)
     {
-        MaximumIterationsPerRequest = 3
+        MaximumIterationsPerRequest = 10
     },
     loggerFactory: loggerFactory,
     services: provider);
 
-var response = await agent.RunAsync(
-    "Scrape Hacker News and write a short, concise summary of what people are talking about today.");
-
+var response = await agent.RunAsync(prompt, cancellationToken: cancellation.Token);
 Console.WriteLine(response.Text);
 ```
 
-`MaximumIterationsPerRequest = 3` is the Agent Framework equivalent of limiting the model/tool loop to three steps for this sample.
+`MaximumIterationsPerRequest = 10` limits the model and tool-call loop for this sample.

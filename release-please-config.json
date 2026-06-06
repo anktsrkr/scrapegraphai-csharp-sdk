@@ -3,6 +3,7 @@
     ".": {
       "release-type": "simple",
       "package-name": "scrapegraphai-csharp-sdk",
+      "include-component-in-tag": false,
       "extra-files": [
         {
           "type": "xml",

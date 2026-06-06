@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -34,8 +36,17 @@ jobs:
         run: |
           [xml]$props = Get-Content Directory.Build.props
           $baseVersion = [System.Version]::Parse($props.Project.PropertyGroup.Version)
-          $nextPatch = $baseVersion.Build + 1
-          $packageVersion = "$($baseVersion.Major).$($baseVersion.Minor).$nextPatch-preview.$env:GITHUB_RUN_NUMBER"
+          $baseTag = "v$baseVersion"
+          $baseReleaseExists = [bool](git tag --list $baseTag)
+
+          if ($baseReleaseExists) {
+            $nextPatch = $baseVersion.Build + 1
+            $previewBaseVersion = "$($baseVersion.Major).$($baseVersion.Minor).$nextPatch"
+          } else {
+            $previewBaseVersion = $baseVersion.ToString()
+          }
+
+          $packageVersion = "$previewBaseVersion-preview.$env:GITHUB_RUN_NUMBER"
           "package_version=$packageVersion" >> $env:GITHUB_OUTPUT
           "Publishing prerelease version $packageVersion"
 
@@ -58,7 +69,7 @@ jobs:
         id: login
         uses: NuGet/login@v1
         with:
-          user: ${{ vars.NUGET_USER }}
+          user: ${{ vars.NUGET_USER || github.repository_owner }}
 
       - name: Publish to nuget.org
         run: dotnet nuget push "artifacts/prerelease/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

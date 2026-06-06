@@ -1,40 +1,73 @@
 # ScrapeGraphAI Core Sample
 
-This sample shows direct use of the SDK typed client through dependency injection.
+This sample is the fastest way to see the core SDK in a real .NET application. It registers the typed client through dependency injection, binds configuration, enables the standard resilience pipeline, and calls the main ScrapeGraphAI API groups.
 
-It demonstrates:
+## What It Demonstrates
 
-- `AddScrapeGraphAI(...)` typed `HttpClient` registration.
-- App-level configuration binding from `SGAI_API_KEY` into `ScrapeGraphOptions`.
-- Opt-in standard resilience from the SDK.
-- Top-level API calls: `HealthAsync`, `CreditsAsync`, `ScrapeAsync`, `ExtractAsync`, and `SearchAsync`.
-- Crawl calls: `Crawl.StartAsync`, `Crawl.GetAsync`, `Crawl.PagesAsync`, `Crawl.StopAsync`, `Crawl.ResumeAsync`, and `Crawl.DeleteAsync`.
-- Monitor calls: `Monitor.CreateAsync`, `Monitor.ListAsync`, `Monitor.GetAsync`, `Monitor.UpdateAsync`, `Monitor.PauseAsync`, `Monitor.ResumeAsync`, `Monitor.ActivityAsync`, and `Monitor.DeleteAsync`.
-- History calls: `History.ListAsync` and `History.GetAsync`.
-- Request cancellation with Ctrl+C.
-- Preserving structured JSON extraction output.
+- `AddScrapeGraphAI(...)` typed `HttpClient` registration
+- Configuration binding from `SGAI_API_KEY` into `ScrapeGraphOptions`
+- Optional retry and timeout resilience
+- Health and credit checks
+- Scrape, extract, and search requests
+- Crawl lifecycle calls
+- Monitor lifecycle calls
+- History listing and lookup
+- Ctrl+C cancellation
+- Structured JSON output for responses and errors
 
-The sample creates temporary crawl and monitor resources and attempts to clean them up before exiting.
+The sample creates temporary crawl and monitor resources and attempts to clean them up before it exits.
+
+## Prerequisites
+
+- .NET 10
+- A ScrapeGraphAI API key
 
 ## Run
+
+From the repository root:
 
 ```powershell
 $env:SGAI_API_KEY = "<your-api-key>"
 dotnet run --project samples/ScrapeGraphAI.CoreSample -- https://example.com
 ```
 
-The sample maps `SGAI_API_KEY` to `ScrapeGraphAI:ApiKey`, binds `ScrapeGraphAI` with `services.Configure<ScrapeGraphOptions>(...)`, and binds `ScrapeGraphAI:Resilience` with `services.Configure<ScrapeGraphResilienceOptions>(...)`. The SDK itself does not read environment variables directly.
+If no URL is provided, the sample uses the ScrapeGraphAI API documentation URL.
 
-Enable SDK request logging:
+## Enable SDK Logs
 
 ```powershell
 dotnet run --project samples/ScrapeGraphAI.CoreSample -- https://example.com --debug
 ```
 
-## What To Change
+Debug logging prints SDK request diagnostics. It does not log API keys, request bodies, prompts, schemas, or scraped content.
 
-- Change `targetUrl` by passing a different URL as the first argument.
+## Configuration
+
+The sample maps:
+
+```text
+SGAI_API_KEY -> ScrapeGraphAI:ApiKey
+```
+
+It also configures:
+
+```text
+ScrapeGraphAI:Resilience:TotalRequestTimeout = 00:01:30
+ScrapeGraphAI:Resilience:AttemptTimeout = 00:00:30
+ScrapeGraphAI:Resilience:MaxRetryAttempts = 3
+ScrapeGraphAI:Resilience:RetryBackoff = 00:00:02
+```
+
+The SDK itself does not read environment variables directly. Environment variables are mapped by the sample's .NET configuration setup.
+
+## Useful Edits
+
+- Change the target URL by passing a different first argument.
 - Change `FormatConfig.Markdown(ScrapeContentMode.Reader)` to `FormatConfig.Html()`, `FormatConfig.Links()`, `FormatConfig.Images()`, or `FormatConfig.Screenshot()`.
 - Change the `ExtractRequest.Schema` JSON schema to match your desired output.
-- Change the monitor cron expression if you want a different recurring schedule.
-- Tune `ScrapeGraphAI:Resilience` configuration for `TotalRequestTimeout`, `AttemptTimeout`, `MaxRetryAttempts`, and `RetryBackoff`.
+- Change the monitor cron expression for a different recurring schedule.
+- Tune `ScrapeGraphAI:Resilience` values for your application's timeout and retry policy.
+
+## Notes
+
+The sample spaces API requests by a few seconds to be polite to rate limits while demonstrating many endpoints in one run.

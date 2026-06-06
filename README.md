@@ -1,6 +1,8 @@
 # ScrapeGraphAI .NET SDK
 
-Typed `net10.0` SDK for the ScrapeGraphAI v2 API with `IHttpClientFactory` and `Microsoft.Extensions.Http.Resilience`.
+Typed .NET SDK for the ScrapeGraphAI v2 API.
+
+The SDK is built around `IHttpClientFactory`, dependency injection, typed request and response models, optional resilience policies, structured diagnostics, and optional Microsoft Agent Framework tool integration.
 
 ## Packages
 
@@ -9,9 +11,21 @@ dotnet add package ScrapeGraphAI.Client
 dotnet add package ScrapeGraphAI.AgentFramework
 ```
 
-Preview builds are published automatically from `main` and can be installed with `--prerelease`.
+Preview packages are available with:
 
-## Register The Typed Client
+```powershell
+dotnet add package ScrapeGraphAI.Client --prerelease
+dotnet add package ScrapeGraphAI.AgentFramework --prerelease
+```
+
+## Requirements
+
+- .NET 10
+- A ScrapeGraphAI API key
+
+## Quick Start
+
+Register the typed client:
 
 ```csharp
 using ScrapeGraphAI;
@@ -22,49 +36,12 @@ builder.Services.AddScrapeGraphAI(options =>
 });
 ```
 
-`AddScrapeGraphAI` registers `IScrapeGraphClient` as a typed `HttpClient`, sets the `SGAI-APIKEY` header, configures the base URL, and adds a user agent.
-The SDK validates configuration when the typed client is resolved; `ApiKey` must be non-empty and `BaseUrl` must be an absolute HTTP or HTTPS URI.
-
-You can also use the normal .NET options pipeline:
+Call the API:
 
 ```csharp
-builder.Services.Configure<ScrapeGraphOptions>(
-    builder.Configuration.GetSection("ScrapeGraphAI"));
+var client = serviceProvider.GetRequiredService<IScrapeGraphClient>();
 
-builder.Services.AddScrapeGraphAI();
-```
-
-Environment variables work through your host configuration, for example `ScrapeGraphAI__ApiKey`. The SDK does not read environment variables directly.
-
-`AddScrapeGraphAI` returns `IHttpClientBuilder`, so advanced callers can chain normal `HttpClient` customization:
-
-```csharp
-builder.Services
-    .AddScrapeGraphAI()
-    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler());
-```
-
-To add the SDK's standard retry/timeout resilience pipeline:
-
-```csharp
-builder.Services.Configure<ScrapeGraphResilienceOptions>(
-    builder.Configuration.GetSection("ScrapeGraphAI:Resilience"));
-
-builder.Services
-    .AddScrapeGraphAI()
-    .AddScrapeGraphAIStandardResilience();
-```
-
-`ScrapeGraphOptions` is limited to SDK identity and endpoint settings. Retry and timeout policy lives in `ScrapeGraphResilienceOptions`, and plain `HttpClient` settings can be configured through the returned `IHttpClientBuilder`.
-
-The SDK emits safe structured diagnostics through `ILogger` and an `ActivitySource` named `ScrapeGraphAI`. It logs endpoint names, methods, status codes, and elapsed time only; it does not log API keys, request bodies, prompts, schemas, headers, cookies, or scraped content.
-
-## Scrape
-
-```csharp
-var sgai = serviceProvider.GetRequiredService<IScrapeGraphClient>();
-
-var result = await sgai.ScrapeAsync(new ScrapeRequest
+var result = await client.ScrapeAsync(new ScrapeRequest
 {
     Url = "https://example.com",
     Formats = [FormatConfig.Markdown(ScrapeContentMode.Reader)]
@@ -74,11 +51,101 @@ if (result.IsSuccess)
 {
     Console.WriteLine(result.Data?.Results["markdown"].Data);
 }
+else
+{
+    Console.Error.WriteLine(result.Error?.Message);
+}
 ```
+
+## Configuration
+
+`AddScrapeGraphAI` registers `IScrapeGraphClient` as a typed `HttpClient`, configures the ScrapeGraphAI base URL, sets the `SGAI-APIKEY` header, and adds a SDK user agent.
+
+The default base URL is:
+
+```text
+https://v2-api.scrapegraphai.com/api/
+```
+
+You can bind configuration through the normal .NET options pipeline:
+
+```csharp
+builder.Services.Configure<ScrapeGraphOptions>(
+    builder.Configuration.GetSection("ScrapeGraphAI"));
+
+builder.Services.AddScrapeGraphAI();
+```
+
+Example environment variable for typical .NET configuration providers:
+
+```powershell
+$env:ScrapeGraphAI__ApiKey = "<your-api-key>"
+```
+
+`ScrapeGraphOptions` contains:
+
+- `ApiKey`
+- `BaseUrl`
+
+The SDK validates options when the typed client is resolved. `ApiKey` must be non-empty, and `BaseUrl` must be an absolute HTTP or HTTPS URI.
+
+## HttpClient Customization
+
+`AddScrapeGraphAI` returns `IHttpClientBuilder`, so you can use normal `HttpClient` customization:
+
+```csharp
+builder.Services
+    .AddScrapeGraphAI()
+    .ConfigureHttpClient(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(90);
+    });
+```
+
+## Resilience
+
+The SDK includes an opt-in retry and timeout pipeline built on `Microsoft.Extensions.Http.Resilience`:
+
+```csharp
+builder.Services
+    .AddScrapeGraphAI()
+    .AddScrapeGraphAIStandardResilience();
+```
+
+You can configure resilience separately from API identity settings:
+
+```csharp
+builder.Services.Configure<ScrapeGraphResilienceOptions>(
+    builder.Configuration.GetSection("ScrapeGraphAI:Resilience"));
+```
+
+`ScrapeGraphResilienceOptions` contains:
+
+- `TotalRequestTimeout`
+- `AttemptTimeout`
+- `MaxRetryAttempts`
+- `RetryBackoff`
+
+Resilience options are validated when the pipeline is used. Timeouts and backoff must be positive, `AttemptTimeout` cannot exceed `TotalRequestTimeout`, and `MaxRetryAttempts` must be greater than zero.
+
+## API Surface
+
+The core client exposes:
+
+- `HealthAsync`
+- `CreditsAsync`
+- `ScrapeAsync`
+- `ExtractAsync`
+- `SearchAsync`
+- `Crawl.StartAsync`, `Crawl.GetAsync`, `Crawl.PagesAsync`, `Crawl.StopAsync`, `Crawl.ResumeAsync`, `Crawl.DeleteAsync`
+- `Monitor.CreateAsync`, `Monitor.ListAsync`, `Monitor.GetAsync`, `Monitor.UpdateAsync`, `Monitor.PauseAsync`, `Monitor.ResumeAsync`, `Monitor.ActivityAsync`, `Monitor.DeleteAsync`
+- `History.ListAsync`, `History.GetAsync`
+
+All API calls return `ApiResult<T>`, so callers can handle successful responses and API errors without relying on exceptions for normal error payloads.
 
 ## Agent Framework Tools
 
-Agent Framework integration lives in the separate `ScrapeGraphAI.AgentFramework` package so core SDK consumers do not pull agent dependencies.
+Agent integration lives in `ScrapeGraphAI.AgentFramework`, keeping the core SDK free of agent dependencies.
 
 ```csharp
 using ScrapeGraphAI.AgentFramework;
@@ -93,6 +160,7 @@ builder.Services.AddScrapeGraphAgentTools(options =>
         ScrapeGraphAgentToolNames.GetCredits,
         ScrapeGraphAgentToolNames.HealthCheck
     ];
+
     options.ApprovalRequiredTools =
     [
         ScrapeGraphAgentToolNames.ScrapePage,
@@ -100,12 +168,12 @@ builder.Services.AddScrapeGraphAgentTools(options =>
     ];
 });
 
-var tools = serviceProvider.GetRequiredService<ScrapeGraphAgentTools>().AsAITools();
+var tools = serviceProvider
+    .GetRequiredService<ScrapeGraphAgentTools>()
+    .AsAITools();
 ```
 
-Attach `tools` to `ChatClientAgentOptions.Tools` or pass them to `AsAIAgent(...)`.
-
-You can also choose tools per agent:
+Attach the returned tools to a Microsoft Agent Framework agent, or choose a smaller tool set per agent:
 
 ```csharp
 var researchTools = serviceProvider
@@ -116,33 +184,19 @@ var researchTools = serviceProvider
         ScrapeGraphAgentToolNames.HealthCheck);
 ```
 
+## Diagnostics
+
+The SDK emits structured logs through `ILogger` and client spans through an `ActivitySource` named `ScrapeGraphAI`.
+
+Diagnostics are designed to be safe by default. They include endpoint names, HTTP methods, status codes, and elapsed time. They do not log API keys, prompts, schemas, request bodies, response bodies, cookies, headers, or scraped content.
+
 ## Samples
 
-- [Core SDK sample](samples/ScrapeGraphAI.CoreSample/README.md): DI typed client, health, credits, scrape, extract, and search.
-- [Agent Framework sample](samples/ScrapeGraphAI.AgentFrameworkSample/README.md): registers ScrapeGraphAI Agent Framework tools, shows approval options, lists tools, and demonstrates how to attach them to an `AIAgent`.
-
-## Configuration
-
-`ScrapeGraphOptions`:
-
-- `ApiKey`
-- `BaseUrl`
-
-`ScrapeGraphResilienceOptions`:
-
-- `TotalRequestTimeout`
-- `AttemptTimeout`
-- `MaxRetryAttempts`
-- `RetryBackoff`
-
-Resilience options are validated when the standard resilience pipeline is used: timeout and backoff values must be positive, `AttemptTimeout` cannot exceed `TotalRequestTimeout`, and `MaxRetryAttempts` cannot be negative.
+- [Core SDK sample](samples/ScrapeGraphAI.CoreSample/README.md): dependency injection, configuration, resilience, scrape, extract, search, crawl, monitor, and history APIs.
+- [Agent Framework sample](samples/ScrapeGraphAI.AgentFrameworkSample/README.md): registers ScrapeGraphAI tools and runs them from a Microsoft Agent Framework agent through an OpenAI-compatible chat endpoint.
 
 ## Releases
 
-This repository uses trunk-based release automation:
+Stable packages are published to NuGet from GitHub releases. Preview packages are published from the `main` branch and can be installed with `--prerelease`.
 
-- Pull requests and pushes to `main` run restore, build, and tests.
-- Every normal push to `main` publishes preview packages like `0.1.1-preview.<run>`.
-- Release Please maintains stable versions, `CHANGELOG.md`, GitHub releases, and stable NuGet publishing.
-
-NuGet Trusted Publishing must be configured for both package IDs with repository `anktsrkr/scrapegraphai-csharp-sdk` and workflow files `release.yml` and `prerelease.yml`. Set the GitHub repository variable `NUGET_USER` to the nuget.org username that owns the trusted publishing policy.
+Versions follow semantic versioning. Patch releases include fixes, minor releases add features, and major releases may include breaking changes.

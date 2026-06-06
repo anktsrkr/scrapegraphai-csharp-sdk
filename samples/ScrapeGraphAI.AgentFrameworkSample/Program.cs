@@ -11,7 +11,7 @@ using System.ClientModel;
 
 const string DefaultPrompt = "Scrape Hacker News and write a short, concise summary of what people are talking about today.";
 
-var runAgent = true;//args.Contains("--run", StringComparer.OrdinalIgnoreCase);
+var runAgent = args.Contains("--run", StringComparer.OrdinalIgnoreCase);
 var prompt = GetOption(args, "--prompt") ?? DefaultPrompt;
 var endpoint = GetOption(args, "--endpoint")
     ?? Environment.GetEnvironmentVariable("LMSTUDIO_BASE_URL")
@@ -31,7 +31,7 @@ var configuration = new ConfigurationBuilder()
     .Build();
 
 var openAiApiKey = configuration["OpenAI:ApiKey"];
-var model = GetOption(args, "--model") ?? configuration["OpenAI:Model"] ?? "google/gemma-4-12b-qat";
+var model = GetOption(args, "--model") ?? configuration["OpenAI:Model"] ?? "google/gemma-4-e4b";
 var openAiEndpoint = configuration["OpenAI:Endpoint"] ?? "http://localhost:1234/v1";
 var scrapeGraphApiKey = configuration["ScrapeGraphAI:ApiKey"];
 
