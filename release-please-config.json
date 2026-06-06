@@ -1,0 +1,15 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "scrapegraphai-csharp-sdk",
+      "extra-files": [
+        {
+          "type": "xml",
+          "path": "Directory.Build.props",
+          "xpath": "/Project/PropertyGroup/Version"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+bin/
+obj/
+artifacts/
+.tmp-build/
+TestResults/
+.vs/
+.vscode/
+*.user
+*.suo
+*.tmp
+*.cache

@@ -1,0 +1,64 @@
+name: Prerelease
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - CHANGELOG.md
+      - .release-please-manifest.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish-prerelease:
+    name: Publish prerelease packages
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, 'chore(main): release') }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compute prerelease version
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content Directory.Build.props
+          $baseVersion = [System.Version]::Parse($props.Project.PropertyGroup.Version)
+          $nextPatch = $baseVersion.Build + 1
+          $packageVersion = "$($baseVersion.Major).$($baseVersion.Minor).$nextPatch-preview.$env:GITHUB_RUN_NUMBER"
+          "package_version=$packageVersion" >> $env:GITHUB_OUTPUT
+          "Publishing prerelease version $packageVersion"
+
+      - name: Restore
+        run: dotnet restore ScrapeGraphAI.slnx
+
+      - name: Build
+        run: dotnet build ScrapeGraphAI.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test ScrapeGraphAI.slnx --configuration Release --no-build
+
+      - name: Pack core package
+        run: dotnet pack src/ScrapeGraphAI/ScrapeGraphAI.csproj --configuration Release --no-build --output artifacts/prerelease -p:PackageVersion=${{ steps.version.outputs.package_version }}
+
+      - name: Pack Agent Framework package
+        run: dotnet pack src/ScrapeGraphAI.AgentFramework/ScrapeGraphAI.AgentFramework.csproj --configuration Release --no-build --output artifacts/prerelease -p:PackageVersion=${{ steps.version.outputs.package_version }}
+
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Publish to nuget.org
+        run: dotnet nuget push "artifacts/prerelease/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

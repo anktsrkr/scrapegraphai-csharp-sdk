@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ScrapeGraphAI/ScrapeGraphAI.csproj" />
+    <Project Path="src/ScrapeGraphAI.AgentFramework/ScrapeGraphAI.AgentFramework.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/ScrapeGraphAI.CoreSample/ScrapeGraphAI.CoreSample.csproj" />
+    <Project Path="samples/ScrapeGraphAI.AgentFrameworkSample/ScrapeGraphAI.AgentFrameworkSample.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ScrapeGraphAI.Tests/ScrapeGraphAI.Tests.csproj" />
+  </Folder>
+</Solution>

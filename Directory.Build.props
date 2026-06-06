@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Version>0.1.0</Version>
+    <Authors>ScrapeGraphAI SDK Contributors</Authors>
+    <Company>ScrapeGraphAI SDK Contributors</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/anktsrkr/scrapegraphai-csharp-sdk</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/anktsrkr/scrapegraphai-csharp-sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+</Project>
