@@ -6,6 +6,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/ScrapeGraphAI.CoreSample/ScrapeGraphAI.CoreSample.csproj" />
     <Project Path="samples/ScrapeGraphAI.AgentFrameworkSample/ScrapeGraphAI.AgentFrameworkSample.csproj" />
+    <Project Path="samples/ScrapeGraphAI.JobPageParser/ScrapeGraphAI.JobPageParser.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ScrapeGraphAI.Tests/ScrapeGraphAI.Tests.csproj" />

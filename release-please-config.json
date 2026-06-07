@@ -4,6 +4,9 @@
       "release-type": "simple",
       "package-name": "scrapegraphai-csharp-sdk",
       "include-component-in-tag": false,
+      "exclude-paths": [
+        "samples"
+      ],
       "extra-files": [
         {
           "type": "xml",
